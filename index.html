@@ -9,26 +9,42 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Custom focus style for inputs */
+        body { font-family: 'Inter', sans-serif; }
         .form-input:focus {
             outline: none;
-            box-shadow: 0 0 0 3px rgba(158, 41, 14, 0.4); /* Laranja com transparência */
-            border-color: #9e290e; /* Laranja */
+            box-shadow: 0 0 0 3px rgba(158, 41, 14, 0.4);
+            border-color: #9e290e;
         }
-        /* Fix for Google Maps Autocomplete UI */
-        .pac-container {
-            z-index: 1050 !important;
-            border-radius: 8px;
-        }
-        /* Definir as cores laranja personalizadas para Tailwind JIT */
+        .pac-container { z-index: 1050 !important; border-radius: 8px; }
         .bg-custom-orange { background-color: #9e290e; }
-        .hover\:bg-custom-orange-dark:hover { background-color: #7a200b; } /* Um tom mais escuro para o hover */
+        .hover\:bg-custom-orange-dark:hover { background-color: #7a200b; }
         .text-custom-orange { color: #9e290e; }
         .border-custom-orange { border-color: #9e290e; }
-        .bg-custom-orange-light { background-color: #fcece7; } /* Um tom mais claro para backgrounds */
+        .bg-custom-orange-light { background-color: #fcece7; }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #9e290e;
+        }
+        .toggle-checkbox:checked + .toggle-label::after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+        .toggle-label { transition: background-color 0.2s ease-in-out; }
+        .toggle-label::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 9999px;
+            transition: transform 0.2s ease-in-out;
+        }
+        .disabled-label {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -37,29 +53,40 @@
         
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-gray-800">Calculadora de Custo de Viagem</h1>
-            <p class="text-gray-500 mt-2">Calcule a rota e o custo total com combustível.</p>
-        </div>
-
-        <div id="api-key-warning" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
-            <p class="font-bold">Ação Necessária!</p>
-            <p>Para usar o mapa, você precisa adicionar sua chave da API do Google Maps no código. Edite o arquivo <strong>index.html</strong> e substitua o valor da variável <strong>'apiKey'</strong>.</p>
+            <p class="text-gray-500 mt-2">Planeje sua rota com paradas e calcule os custos.</p>
         </div>
 
         <form id="fuel-form" class="space-y-6">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                    <label for="origin" class="block text-sm font-medium text-gray-700 mb-1">Origem</label>
-                    <input type="text" id="origin" placeholder="Digite o endereço de partida" class="form-input w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg transition duration-300">
-                </div>
-                <div>
-                    <label for="destination" class="block text-sm font-medium text-gray-700 mb-1">Destino</label>
-                    <input type="text" id="destination" placeholder="Digite o endereço de chegada" class="form-input w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg transition duration-300">
+            <div>
+                <label for="origin" class="block text-sm font-medium text-gray-700 mb-1">Origem</label>
+                <input type="text" id="origin" placeholder="Digite o endereço de partida" class="form-input w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg transition duration-300">
+            </div>
+
+            <div id="stops-container" class="space-y-4"></div>
+
+            <div>
+                <label for="destination" class="block text-sm font-medium text-gray-700 mb-1">Destino Final</label>
+                <input type="text" id="destination" placeholder="Digite o endereço de chegada" class="form-input w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg transition duration-300">
+            </div>
+            
+            <div class="flex justify-between items-center pt-2">
+                <button type="button" id="add-stop-btn" class="flex items-center text-sm font-medium text-custom-orange hover:text-custom-orange-dark transition">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Adicionar Parada
+                </button>
+                
+                <div id="round-trip-container" class="flex items-center">
+                    <span class="mr-3 text-sm font-medium text-gray-700">Ida e Volta</span>
+                    <div class="relative">
+                        <input type="checkbox" id="round-trip-toggle" class="toggle-checkbox sr-only">
+                        <label for="round-trip-toggle" class="toggle-label block bg-gray-200 w-12 h-6 rounded-full cursor-pointer"></label>
+                    </div>
                 </div>
             </div>
 
-            <div id="distance-result" class="text-center text-lg font-medium text-gray-700 hidden"></div>
 
+            <div id="distance-result" class="text-center text-lg font-medium text-gray-700 hidden"></div>
             <div id="map" class="h-64 w-full bg-gray-200 rounded-lg hidden"></div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
@@ -78,198 +105,193 @@
             </button>
         </form>
 
-        <div id="result" class="mt-8 text-center hidden">
-            
-        </div>
+        <div id="result" class="mt-8 text-center hidden"></div>
     </div>
     
     <script>
-        // IMPORTANTE: A chave da API do Google Maps foi inserida aqui.
         const apiKey = 'AIzaSyCM9EDgFxFGjSM6Z8cdaCJHwPByHpimdJ8';
-
+        
         const form = document.getElementById('fuel-form');
         const resultDiv = document.getElementById('result');
         const distanceResultDiv = document.getElementById('distance-result');
         const mapDiv = document.getElementById('map');
-        const apiKeyWarningDiv = document.getElementById('api-key-warning');
+        const addStopBtn = document.getElementById('add-stop-btn');
+        const stopsContainer = document.getElementById('stops-container');
+        const roundTripToggle = document.getElementById('round-trip-toggle');
+        const roundTripContainer = document.getElementById('round-trip-container');
 
         let map;
         let directionsService;
         let directionsRenderer;
-        let calculatedDistance = null;
-        let calculatedDistanceText = '';
-        let calculatedDurationText = '';
+        let stopCounter = 0;
+        let routeDetails = {};
 
-        // Função chamada globalmente pelo callback da API do Google
         function initMap() {
             directionsService = new google.maps.DirectionsService();
             directionsRenderer = new google.maps.DirectionsRenderer();
             
-            const brazil = { lat: -14.235, lng: -51.925 };
             map = new google.maps.Map(mapDiv, {
-                zoom: 4,
-                center: brazil,
-                disableDefaultUI: true,
-                zoomControl: true,
+                zoom: 4, center: { lat: -14.235, lng: -51.925 },
+                disableDefaultUI: true, zoomControl: true,
             });
             directionsRenderer.setMap(map);
 
-            const originInput = document.getElementById('origin');
-            const destinationInput = document.getElementById('destination');
-            
-            new google.maps.places.Autocomplete(originInput);
-            new google.maps.places.Autocomplete(destinationInput);
+            initAutocompleteForElement(document.getElementById('origin'));
+            initAutocompleteForElement(document.getElementById('destination'));
         }
 
-        // Carrega o script do Google Maps dinamicamente
+        function initAutocompleteForElement(element) {
+            new google.maps.places.Autocomplete(element);
+        }
+
         function loadGoogleMapsScript() {
-            if (apiKey === 'SUA_CHAVE_API' || !apiKey) {
-                apiKeyWarningDiv.classList.remove('hidden');
-                document.getElementById('fuel-form').classList.add('hidden'); // Opcional: esconde o formulário
-                return;
+            if (apiKey && apiKey !== 'SUA_CHAVE_API') {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
+                script.async = true;
+                document.head.appendChild(script);
             }
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
         }
 
-        form.addEventListener('submit', function(event) {
-            event.preventDefault();
-            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
-                showResult(`
-                    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
-                        <p class="font-bold">Atenção!</p>
-                        <p>A API de mapas não está carregada. Verifique sua chave de API e a conexão com a internet.</p>
-                    </div>
-                `);
-                return;
+        addStopBtn.addEventListener('click', () => {
+            stopCounter++;
+            const stopId = `stop-${stopCounter}`;
+
+            const stopDiv = document.createElement('div');
+            stopDiv.className = 'relative';
+            stopDiv.innerHTML = `
+                <label for="${stopId}" class="block text-sm font-medium text-gray-700 mb-1">Parada ${stopCounter}</label>
+                <input type="text" id="${stopId}" name="stop" placeholder="Digite uma parada" class="form-input w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg transition duration-300">
+                <button type="button" class="absolute top-8 right-3 text-gray-400 hover:text-red-500 remove-stop-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </button>
+            `;
+            stopsContainer.appendChild(stopDiv);
+            initAutocompleteForElement(document.getElementById(stopId));
+            updateRoundTripState();
+        });
+
+        stopsContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-stop-btn')) {
+                e.target.closest('.relative').remove();
+                updateRoundTripState();
             }
+        });
+
+        function updateRoundTripState() {
+            const hasStops = stopsContainer.children.length > 0;
+            roundTripToggle.disabled = hasStops;
+            roundTripContainer.classList.toggle('disabled-label', hasStops);
+            if (hasStops) {
+                roundTripToggle.checked = false;
+            }
+        }
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
             calculateAndDisplayRoute();
         });
 
         function calculateAndDisplayRoute() {
             const origin = document.getElementById('origin').value;
             const destination = document.getElementById('destination').value;
+            if (!origin || !destination) return;
 
-            if (!origin || !destination) {
-                 showResult(`
-                    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
-                        <p class="font-bold">Atenção!</p>
-                        <p>Por favor, preencha os campos de origem e destino para calcular a rota.</p>
-                    </div>
-                `);
-                return;
-            }
+            const stopInputs = document.querySelectorAll('#stops-container input');
+            const waypoints = Array.from(stopInputs).map(input => ({
+                location: input.value,
+                stopover: true
+            }));
 
-            directionsService.route(
-                {
-                    origin: origin,
-                    destination: destination,
-                    travelMode: google.maps.TravelMode.DRIVING,
-                },
-                (response, status) => {
-                    if (status === "OK") {
-                        mapDiv.classList.remove('hidden');
-                        directionsRenderer.setDirections(response);
+            const request = {
+                origin,
+                destination,
+                waypoints,
+                travelMode: google.maps.TravelMode.DRIVING
+            };
 
-                        const route = response.routes[0].legs[0];
-                        calculatedDistance = route.distance.value / 1000; // Converte para KM
-                        calculatedDistanceText = route.distance.text;
-                        calculatedDurationText = route.duration.text;
+            directionsService.route(request, (response, status) => {
+                if (status === "OK") {
+                    mapDiv.classList.remove('hidden');
+                    directionsRenderer.setDirections(response);
 
-                        distanceResultDiv.innerHTML = `Distância: <span class="text-custom-orange font-bold">${calculatedDistanceText}</span> | Duração: <span class="text-custom-orange font-bold">${calculatedDurationText}</span>`;
-                        distanceResultDiv.classList.remove('hidden');
-
-                        calculateFuelCost();
-
-                    } else if (status === "REQUEST_DENIED") {
-                        showResult(`
-                            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg text-left">
-                                <p class="font-bold">Acesso à API Negado!</p>
-                                <p>Ocorreu um problema com a sua chave da API do Google Maps. As causas comuns incluem:</p>
-                                <ul class="list-disc list-inside mt-2 space-y-1">
-                                    <li>A chave da API expirou.</li>
-                                    <li>O faturamento não está ativado no seu projeto do Google Cloud.</li>
-                                    <li>A chave é inválida ou tem restrições que impedem o uso.</li>
-                                </ul>
-                                <p class="mt-3">Por favor, verifique as configurações da sua chave no <a href="https://console.cloud.google.com/google/maps-apis/overview" target="_blank" class="font-semibold text-custom-orange hover:underline">Google Cloud Console</a>.</p>
-                            </div>
-                        `);
-                        calculatedDistance = null;
-                        distanceResultDiv.classList.add('hidden');
-                        mapDiv.classList.add('hidden');
+                    let totalDistance = 0;
+                    let totalDuration = 0;
+                    response.routes[0].legs.forEach(leg => {
+                        totalDistance += leg.distance.value;
+                        totalDuration += leg.duration.value;
+                    });
+                    
+                    const isRoundTrip = roundTripToggle.checked && !roundTripToggle.disabled;
+                    if (isRoundTrip) {
+                        totalDistance *= 2;
+                        totalDuration *= 2;
                     }
-                    else {
-                        showResult(`
-                            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
-                                <p class="font-bold">Erro de Rota!</p>
-                                <p>Não foi possível calcular a rota. Verifique os endereços ou tente novamente. (Erro: ${status})</p>
-                            </div>
-                        `);
-                        calculatedDistance = null;
-                        distanceResultDiv.classList.add('hidden');
-                        mapDiv.classList.add('hidden');
-                    }
+                    
+                    const distanceInKm = totalDistance / 1000;
+                    const hours = Math.floor(totalDuration / 3600);
+                    const minutes = Math.floor((totalDuration % 3600) / 60);
+
+                    routeDetails = {
+                        distance: distanceInKm,
+                        distanceText: `${distanceInKm.toFixed(1).replace('.',',')} km`,
+                        durationText: `${hours}h ${minutes}min`,
+                        origin: response.routes[0].legs[0].start_address,
+                        destination: response.routes[0].legs[response.routes[0].legs.length - 1].end_address,
+                        stops: waypoints.map(wp => wp.location),
+                        isRoundTrip
+                    };
+                    
+                    let tripType = isRoundTrip ? `(Ida e Volta)` : '';
+                    distanceResultDiv.innerHTML = `Distância: <span class="text-custom-orange font-bold">${routeDetails.distanceText}</span> ${tripType} | Duração: <span class="text-custom-orange font-bold">${routeDetails.durationText}</span>`;
+                    distanceResultDiv.classList.remove('hidden');
+
+                    calculateFuelCost();
+                } else {
+                    console.error("Directions request failed due to " + status);
                 }
-            );
+            });
         }
-
 
         function calculateFuelCost() {
             const consumption = parseFloat(document.getElementById('consumption').value);
             const price = parseFloat(document.getElementById('price').value);
+            if (!routeDetails.distance || isNaN(consumption) || isNaN(price) || consumption <= 0 || price <= 0) return;
 
-            if (!calculatedDistance || isNaN(consumption) || isNaN(price) || calculatedDistance <= 0 || consumption <= 0 || price <= 0) {
-                showResult(`
-                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
-                        <p class="font-bold">Faltam Dados!</p>
-                        <p>Após calcular a rota, preencha os campos de consumo e preço com valores válidos.</p>
-                    </div>
-                `);
-                return;
-            }
-
-            const litersNeeded = calculatedDistance / consumption;
+            const litersNeeded = routeDetails.distance / consumption;
             const totalCost = litersNeeded * price;
             
-            const originText = document.getElementById('origin').value;
-            const destinationText = document.getElementById('destination').value;
-            const costText = totalCost.toFixed(2).replace('.', ',');
-            const litersText = litersNeeded.toFixed(2).replace('.', ',');
+            let tripSummary = `De: ${routeDetails.origin}\nPara: ${routeDetails.destination}`;
+            if (routeDetails.stops.length > 0) {
+                tripSummary += `\nCom paradas em: ${routeDetails.stops.join(', ')}`;
+            }
+            if (routeDetails.isRoundTrip) {
+                tripSummary += ` (Ida e Volta)`;
+            }
 
-            const shareMessage = `Resumo da Viagem 🚗\n\nDe: ${originText}\nPara: ${destinationText}\n\nDistância: ${calculatedDistanceText} | Duração: ${calculatedDurationText}\nCusto do Combustível: R$ ${costText}\n\nCalculado com a Calculadora de Custo de Viagem.`;
+            const shareMessage = `Resumo da Viagem 🚗\n\n${tripSummary}\n\nDistância: ${routeDetails.distanceText} | Duração: ${routeDetails.durationText}\nCusto do Combustível: R$ ${totalCost.toFixed(2).replace('.', ',')}\n\nCalculado com a Calculadora de Custo de Viagem.`;
             const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
             
             const resultHTML = `
                 <div class="p-6 rounded-lg border-l-4 border-custom-orange bg-custom-orange-light text-left space-y-2">
                     <h2 class="text-xl font-bold text-gray-800 text-center">Custo Total da Viagem:</h2>
                     <div class="text-center">
-                        <span class="font-bold text-3xl text-custom-orange">R$ ${costText}</span>
+                        <span class="font-bold text-3xl text-custom-orange">R$ ${totalCost.toFixed(2).replace('.', ',')}</span>
                     </div>
                     <div class="pt-4 mt-4 border-t border-gray-200 text-sm text-gray-600 text-center">
-                        Serão necessários aproximadamente ${litersText} litros de combustível.
+                        Serão necessários aproximadamente ${litersNeeded.toFixed(2).replace('.', ',')} litros de combustível.
                     </div>
                 </div>
                 <div class="mt-6">
-                    <a href="${whatsappUrl}" target="_blank" class="inline-flex items-center justify-center w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-green-300">
-                        <svg fill="currentColor" class="h-6 w-6 mr-2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.31 20.62C8.75 21.41 10.36 21.86 12.04 21.86C17.5 21.86 21.95 17.41 21.95 11.91C21.95 6.45 17.5 2 12.04 2ZM12.04 3.67C16.56 3.67 20.28 7.38 20.28 11.91C20.28 16.44 16.56 20.19 12.04 20.19C10.46 20.19 8.95 19.72 7.64 18.89L7.33 18.7L4.93 19.3L5.55 16.99L5.34 16.67C4.44 15.25 3.8 13.61 3.8 11.91C3.8 7.38 7.52 3.67 12.04 3.67ZM9.11 7.29C8.87 7.29 8.7 7.34 8.55 7.57C8.4 7.81 7.91 8.44 7.91 9.41C7.91 10.38 8.58 11.31 8.7 11.45C8.82 11.59 10.27 13.94 12.58 14.9C14.54 15.72 14.89 15.58 15.22 15.54C15.82 15.45 16.65 14.91 16.85 14.33C17.05 13.75 17.05 13.26 16.98 13.14C16.91 13.02 16.74 12.95 16.47 12.81C16.2 12.67 15.01 12.08 14.79 11.99C14.57 11.9 14.43 11.86 14.28 12.08C14.13 12.31 13.74 12.81 13.62 12.95C13.5 13.09 13.38 13.11 13.11 13C12.84 12.88 12.05 12.61 11.11 11.76C10.35 11.08 9.83 10.26 9.69 10.02C9.55 9.78 9.66 9.66 9.78 9.54C9.89 9.43 10.02 9.26 10.14 9.12C10.26 8.98 10.31 8.87 10.38 8.73C10.45 8.59 10.41 8.45 10.34 8.33C10.27 8.21 9.77 6.96 9.57 6.47C9.37 5.99 9.17 6.04 9.05 6.03C8.98 6.03 8.87 6.03 8.75 6.03"/></svg>
+                    <a href="${whatsappUrl}" target="_blank" class="inline-flex items-center justify-center w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300 shadow-md">
+                         <svg fill="currentColor" class="h-6 w-6 mr-2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.31 20.62C8.75 21.41 10.36 21.86 12.04 21.86C17.5 21.86 21.95 17.41 21.95 11.91C21.95 6.45 17.5 2 12.04 2ZM12.04 3.67C16.56 3.67 20.28 7.38 20.28 11.91C20.28 16.44 16.56 20.19 12.04 20.19C10.46 20.19 8.95 19.72 7.64 18.89L7.33 18.7L4.93 19.3L5.55 16.99L5.34 16.67C4.44 15.25 3.8 13.61 3.8 11.91C3.8 7.38 7.52 3.67 12.04 3.67ZM9.11 7.29C8.87 7.29 8.7 7.34 8.55 7.57C8.4 7.81 7.91 8.44 7.91 9.41C7.91 10.38 8.58 11.31 8.7 11.45C8.82 11.59 10.27 13.94 12.58 14.9C14.54 15.72 14.89 15.58 15.22 15.54C15.82 15.45 16.65 14.91 16.85 14.33C17.05 13.75 17.05 13.26 16.98 13.14C16.91 13.02 16.74 12.95 16.47 12.81C16.2 12.67 15.01 12.08 14.79 11.99C14.57 11.9 14.43 11.86 14.28 12.08C14.13 12.31 13.74 12.81 13.62 12.95C13.5 13.09 13.38 13.11 13.11 13C12.84 12.88 12.05 12.61 11.11 11.76C10.35 11.08 9.83 10.26 9.69 10.02C9.55 9.78 9.66 9.66 9.78 9.54C9.89 9.43 10.02 9.26 10.14 9.12C10.26 8.98 10.31 8.87 10.38 8.73C10.45 8.59 10.41 8.45 10.34 8.33C10.27 8.21 9.77 6.96 9.57 6.47C9.37 5.99 9.17 6.04 9.05 6.03C8.98 6.03 8.87 6.03 8.75 6.03"/></svg>
                         Compartilhar no WhatsApp
                     </a>
-                </div>
-            `;
-
-
-            showResult(resultHTML);
-        }
-
-        function showResult(html) {
-            resultDiv.innerHTML = html;
+                </div>`;
+            resultDiv.innerHTML = resultHTML;
             resultDiv.classList.remove('hidden');
         }
         
-        // Inicia o carregamento do script do mapa quando a página carregar
         window.onload = loadGoogleMapsScript;
     </script>
 </body>
